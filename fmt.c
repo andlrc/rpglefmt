@@ -3,138 +3,10 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include "rpglefmt.h"
-
-#define MAXPAREN 64
-enum state {
-	STATE_NORM = 0,
-#ifdef FEAT_ICEBREAK
-	STATE_IBSTR,		/* Multi line IceBreak string */
-	STATE_IBCOMMENT,	/* Multi line IceBreak comment */
-#endif
-	STATE_COMMENT,		/* Single line comment */
-	STATE_STR		/* Multi line string */
-};
-struct line {
-	enum state state;	/* parser state */
-	int indent;		/* indent for the line */
-	int spaces;		/* numbers of leading spaces */
-	int xindent;		/* extra indent for a line */
-	int lineno;
-	char *line;
-	int parencnt;
-	int parenpos[MAXPAREN];
-	int argvalid;
-};
+#include "fmt.h"
+#include "dclstore.h"
 
 #define ROOTINDENT 7
-
-struct dclitem {
-	int indent;
-	char *dcl;	/* this should be freeded */
-	int dcllen;
-	char *ident;
-	int identlen;
-	char *rest;
-};
-struct dclstore {
-	struct dclitem store[64];
-	int len;
-};
-
-static int pushdcl(struct dclstore *dcl, struct line *c)
-{
-#define ltrim(p)		\
-	while (isspace(*p)) {	\
-		p++;		\
-	}
-	struct dclitem *item;
-	char *pline;
-
-	/* empty line */
-	if (!c) {
-		item = &(dcl->store[dcl->len++]);
-		memset(item, 0, sizeof(struct dclitem));
-		item->dcl = item->ident = item->rest;
-		return 0;
-	}
-
-	/*
-	 * each line is something like:
-	 * dcl-s  ident_long   type(siz);
-	 * dcl-ds ident_longer likeds(ident);
-	 * dcl-ds ident_super_long;
-	 */
-	if (!(pline = strdup(c->line)))
-		return -1;
-
-	item = &(dcl->store[dcl->len++]);
-	memset(item, 0, sizeof(struct dclitem));
-	item->indent = c->indent;
-	item->dcl = pline;
-	item->ident = item->rest = 0;
-
-	/* find end and length of dcl-XX */;
-	while (*pline != ';' && !isspace(*pline)) {
-		pline++;
-		item->dcllen++;
-	}
-
-	/* dcl-XX$ */
-	if (*pline == '\0')
-		return 0;
-	*pline++ = '\0';
-
-	ltrim(pline);
-	item->ident = pline;
-	/* find end and length of the identifier */
-	while (*pline != ';' && !isspace(*pline)) {
-		pline++;
-		item->identlen++;
-	}
-
-	/* dcl-XX ident$ | dcl-XX ident; */
-	if (*pline == '\0' || *pline == ';')
-		return 0;
-	*pline++ = '\0';
-
-	ltrim(pline);
-	item->rest = pline;
-
-	return 0;
-}
-
-static int flushdcl(FILE *outfp, struct dclstore *dcl)
-{
-	struct dclitem *item;
-	int i, dclmax, identmax;
-
-	dclmax = 0;
-	identmax = 0;
-
-	for (i = 0; i < dcl->len; i++) {
-		item = &(dcl->store[i]);
-
-		if (item->dcllen > dclmax)
-			dclmax = item->dcllen;
-		if (item->identlen > identmax)
-			identmax = item->identlen;
-	}
-
-	for (i = 0; i < dcl->len; i++) {
-		item = &(dcl->store[i]);
-		if (item->rest)
-			fprintf(outfp, "%*s%-*s %-*s %s", item->indent, "", dclmax, item->dcl, identmax, item->ident, item->rest);
-		else if (item->ident)
-			fprintf(outfp, "%*s%-*s %s", item->indent, "", dclmax, item->dcl, item->ident);
-		else if (item->dcl)
-			fprintf(outfp, "%*s%-*s", item->indent, "", dclmax, item->dcl);
-		else
-			fprintf(outfp, "\n");
-		free(item->dcl);
-	}
-	dcl->len = 0;
-	return 0;
-}
 
 /*
  * startwith and contains both checks word boundaries, i.e
@@ -146,15 +18,14 @@ static int flushdcl(FILE *outfp, struct dclstore *dcl)
 	 strncasecmp(s, q, sizeof(q) - 1) == 0 &&	\
 	 !isalnum(s[sizeof(q) - 1]))
 
-static int contains(char *s, char *q)
+#define contains(s, q)					\
+	_contains(s, q, sizeof(q) - 1)
+static int _contains(char *s, char *q, int qlen)
 {
 	char *p;
-	int qlen;
 
 	if (!s)
 		return 0;
-
-	qlen = strlen(q);
 
 	for (p = strstr(s, q); p; p = strstr(p + 1, q)) {
 		if ((p == s || !isalnum(*(p - 1))) && !isalnum(p[qlen]))
@@ -164,7 +35,7 @@ static int contains(char *s, char *q)
 	return 0;
 }
 
-static int getindent(struct rpglecfg *cfg, struct line *c, struct line *p)
+static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
 {
 	char *ptmp;
 	int indent;
@@ -376,7 +247,7 @@ static int getindent(struct rpglecfg *cfg, struct line *c, struct line *p)
 
 	if (c->parencnt < 0) {
 		c->parencnt = p->parencnt + c->parencnt;
-		memcpy(c->parenpos, p->parenpos, sizeof(int) * MAXPAREN);
+		memcpy(c->parenpos, p->parenpos, sizeof(int) * FMTMAXPAREN);
 	}
 
 	return indent;
@@ -388,16 +259,16 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 	size_t linesiz;
 	int lineno;
 	struct dclstore dcl;
-	struct line c;	/* current line */
-	struct line p;	/* Previous non blank line */
+	struct fmtline c;	/* current line */
+	struct fmtline p;	/* Previous non blank line */
 
 	linebuf = 0;
 	linesiz = 0;
 
 	memset(&dcl, 0, sizeof(struct dclstore));
 
-	memset(&c, 0, sizeof(struct line));
-	memset(&p, 0, sizeof(struct line));
+	memset(&c, 0, sizeof(struct fmtline));
+	memset(&p, 0, sizeof(struct fmtline));
 	c.line = p.line = 0;
 
 	for (lineno = 0; getline(&linebuf, &linesiz, infp) != -1; lineno++) {
@@ -407,7 +278,7 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 
 		if (*pline == '\0') {	/* ignore empty lines */
 			if (cfg->aligndcl) {
-				if (pushdcl(&dcl, 0) == -1)
+				if (dclpush(&dcl, 0) == -1)
 					return -1;
 			} else {
 				fprintf(outfp, "%s", linebuf);
@@ -419,7 +290,13 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 		if (!(c.line = strdup(pline)))
 			return -1;
 		c.indent = getindent(cfg, &c, &p);
-		if (cfg->paren && p.parencnt) {
+		if (cfg->relindent && (
+#ifdef FEAT_ICEBREAK
+		    p.state == STATE_IBSTR ||
+#endif
+		    p.state == STATE_STR)) {
+			c.xindent += (c.spaces - p.spaces);
+		} else if (cfg->paren && p.parencnt) {
 			if (p.argvalid && cfg->paren >= 2)
 				c.xindent = p.parenpos[p.parencnt - 1] + 1;
 			else
@@ -435,6 +312,7 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 		} else {
 			c.xindent = 0;
 		}
+
 		int indent = c.indent + c.xindent;
 
 		if (indent < 0)
@@ -445,11 +323,11 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 			    startwith(c.line, "dcl-c") ||
 			    startwith(c.line, "dcl-ds") ||
 			    startwith(c.line, "dcl-pr")) {
-				if (pushdcl(&dcl, &c) == -1)
+				if (dclpush(&dcl, &c) == -1)
 					return -1;
 			} else {
 				if (dcl.len) {
-					flushdcl(outfp, &dcl);
+					dclflush(outfp, &dcl);
 				}
 				fprintf(outfp, "%*s%s", indent, "", c.line);
 			}
@@ -458,11 +336,11 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 		}
 
 		free(p.line);
-		memcpy(&p, &c, sizeof(struct line));
+		memcpy(&p, &c, sizeof(struct fmtline));
 	}
 
 	if (dcl.len)
-		flushdcl(outfp, &dcl);
+		dclflush(outfp, &dcl);
 
 	free(p.line);
 	free(linebuf);

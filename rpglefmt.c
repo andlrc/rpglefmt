@@ -1,4 +1,4 @@
-#define VERSION "0.0.2"
+#define VERSION "0.0.3"
 
 #include <stdio.h>
 #include <string.h>
@@ -28,8 +28,9 @@ void print_help(char *program_name)
 #endif
 	       "  -p         try to be clever when indenting multi line parenthesis,\n"
 	       "             use multiply times for different styles\n"
+	       "  -r         preserve relative indentation in multi line string\n"
 	       "  -s width   number of spaces to indent with\n"
-	       "  -u         use indentaion from first line, overrides -i\n"
+	       "  -u         use indentation from first line, overrides -i\n"
 	       "  -h         show this help and exit\n"
 	       "  -V         display version information\n", program_name);
 }
@@ -60,7 +61,7 @@ int main(int argc, char **argv)
 	cfg.indent = CFG_INDUNSET;
 
 	opterr = 0;
-	while ((c = getopt(argc, argv, "dIi:ps:uhV")) != -1) {
+	while ((c = getopt(argc, argv, "dIi:prs:uhV")) != -1) {
 		switch (c) {
 		case 'd':	/* align declarations */
 			cfg.aligndcl++;
@@ -75,6 +76,9 @@ int main(int argc, char **argv)
 			break;
 		case 'p':	/* indent parenthesis */
 			cfg.paren++;
+			break;
+		case 'r':	/* preserve relative indentation in strings */
+			cfg.relindent++;
 			break;
 		case 's':	/* shiftwidth */
 			cfg.shiftwidth = atoi(optarg);

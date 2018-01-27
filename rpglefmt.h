@@ -11,5 +11,6 @@ struct rpglecfg {
 			   multi line interpreted strings */
 #endif
 	int paren;	/* (de) indent parenthesis */
+	int relindent;	/* preserve relative indentation in strings */
 };
 #endif

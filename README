@@ -22,6 +22,10 @@ DESCRIPTION
        -p     try  to  be  clever  when indenting multi line parenthesis, each
               time -p is used a different approach will be tried
 
+       -r     preserve the relative indentation between  multi  line  strings.
+              If the first line is indented four and the second six, then sec-
+              ond will end up being indented two spaces more
+
        -s width
               the size in spaces for a indent
 

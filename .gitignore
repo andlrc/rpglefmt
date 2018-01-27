@@ -1,4 +1,5 @@
 fmt.o
 rpglefmt.o
+dclstore.o
 rpglefmt
 tags
