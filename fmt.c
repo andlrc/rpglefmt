@@ -5,7 +5,7 @@
 #include "rpglefmt.h"
 
 #define MAXPAREN 64
-enum {
+enum state {
 	STATE_NORM = 0,
 #ifdef FEAT_ICEBREAK
 	STATE_IBSTR,		/* Multi line IceBreak string */
@@ -13,9 +13,9 @@ enum {
 #endif
 	STATE_COMMENT,		/* Single line comment */
 	STATE_STR		/* Multi line string */
-} state;
+};
 struct line {
-	int state;		/* parser state */
+	enum state state;	/* parser state */
 	int indent;		/* indent for the line */
 	int spaces;		/* numbers of leading spaces */
 	int xindent;		/* extra indent for a line */
@@ -49,6 +49,14 @@ static int pushdcl(struct dclstore *dcl, struct line *c)
 	}
 	struct dclitem *item;
 	char *pline;
+
+	/* empty line */
+	if (!c) {
+		item = &(dcl->store[dcl->len++]);
+		memset(item, 0, sizeof(struct dclitem));
+		item->dcl = item->ident = item->rest;
+		return 0;
+	}
 
 	/*
 	 * each line is something like:
@@ -116,8 +124,12 @@ static int flushdcl(FILE *outfp, struct dclstore *dcl)
 		item = &(dcl->store[i]);
 		if (item->rest)
 			fprintf(outfp, "%*s%-*s %-*s %s", item->indent, "", dclmax, item->dcl, identmax, item->ident, item->rest);
-		else
+		else if (item->ident)
 			fprintf(outfp, "%*s%-*s %s", item->indent, "", dclmax, item->dcl, item->ident);
+		else if (item->dcl)
+			fprintf(outfp, "%*s%-*s", item->indent, "", dclmax, item->dcl);
+		else
+			fprintf(outfp, "\n");
 		free(item->dcl);
 	}
 	dcl->len = 0;
@@ -152,8 +164,7 @@ static int contains(char *s, char *q)
 	return 0;
 }
 
-static int getindent(struct rpglecfg *cfg, struct line *c, struct line *p,
-		     struct line *pp)
+static int getindent(struct rpglecfg *cfg, struct line *c, struct line *p)
 {
 	char *ptmp;
 	int indent;
@@ -183,7 +194,32 @@ static int getindent(struct rpglecfg *cfg, struct line *c, struct line *p,
 		goto finish;
 	}
 
-	if (c->state == STATE_NORM) {
+	switch ((int) c->state) {
+#ifdef FEAT_ICEBREAK
+	case STATE_IBCOMMENT:
+		/*
+		 * indent the '*' in continues comments
+		 */
+		if (startwith(c->line, "*") && !startwith(p->line, "*")) {
+			indent = p->indent + 1;
+			goto finish;
+		}
+		if (!startwith(c->line, "*") && startwith(p->line, "*")) {
+			indent = p->indent - 1;
+			goto finish;
+		}
+		break;
+#endif
+	case STATE_NORM:
+#ifdef FEAT_ICEBREAK
+		/*
+		 * de indent after the indent created by the '*' in continues comments
+		 */
+		if (startwith(p->line, "*") &&  contains(p->line, "*/")) {
+			indent = p->indent - 1;
+			goto finish;
+		}
+#endif
 		/*
 		 * a "when" which follows a "select" should be indented: All other
 		 * "when" should be de indented
@@ -265,6 +301,7 @@ static int getindent(struct rpglecfg *cfg, struct line *c, struct line *p,
 			indent = p->indent - cfg->shiftwidth * 2;
 			goto finish;
 		}
+		break;
 	}
 
 	/*
@@ -353,7 +390,6 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 	struct dclstore dcl;
 	struct line c;	/* current line */
 	struct line p;	/* Previous non blank line */
-	struct line pp;	/* Previous previous non blank line */
 
 	linebuf = 0;
 	linesiz = 0;
@@ -362,8 +398,7 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 
 	memset(&c, 0, sizeof(struct line));
 	memset(&p, 0, sizeof(struct line));
-	memset(&pp, 0, sizeof(struct line));
-	c.line = p.line = pp.line = 0;
+	c.line = p.line = 0;
 
 	for (lineno = 0; getline(&linebuf, &linesiz, infp) != -1; lineno++) {
 		for (pline = linebuf, c.spaces = 0;
@@ -371,14 +406,19 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 			/* remove leading indentation */;
 
 		if (*pline == '\0') {	/* ignore empty lines */
-			fprintf(outfp, "%s", linebuf);
+			if (cfg->aligndcl) {
+				if (pushdcl(&dcl, 0) == -1)
+					return -1;
+			} else {
+				fprintf(outfp, "%s", linebuf);
+			}
 			continue;
 		}
 
 		c.lineno = lineno;
 		if (!(c.line = strdup(pline)))
 			return -1;
-		c.indent = getindent(cfg, &c, &p, &pp);
+		c.indent = getindent(cfg, &c, &p);
 		if (cfg->paren && p.parencnt) {
 			if (p.argvalid && cfg->paren >= 2)
 				c.xindent = p.parenpos[p.parencnt - 1] + 1;
@@ -417,15 +457,13 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 			fprintf(outfp, "%*s%s", indent, "", c.line);
 		}
 
-		free(pp.line);
-		memcpy(&pp, &p, sizeof(struct line));
+		free(p.line);
 		memcpy(&p, &c, sizeof(struct line));
 	}
 
 	if (dcl.len)
 		flushdcl(outfp, &dcl);
 
-	free(pp.line);
 	free(p.line);
 	free(linebuf);
 

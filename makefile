@@ -1,5 +1,5 @@
 FEATURES	= -DFEAT_ICEBREAK
-CFLAGS		= -Wall -Werror $(FEATURES)
+CFLAGS		= -Wall -Werror -Wextra $(FEATURES)
 
 all:	rpglefmt README
 .PHONY:	all
