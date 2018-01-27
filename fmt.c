@@ -83,12 +83,16 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
 #endif
 	case STATE_NORM:
 #ifdef FEAT_ICEBREAK
-		/*
-		 * de indent after the indent created by the '*' in continues comments
-		 */
-		if (startwith(p->line, "*") && contains(p->line, "*/")) {
-			indent = p->indent - 1;
-			goto finish;
+		if (cfg->icebreak) {
+			/*
+			 * de indent after the indent created by the '*' in
+			 * continues comments
+			 */
+			if (startwith(p->line, "*") &&
+			    contains(p->line, "*/")) {
+				indent = p->indent - 1;
+				goto finish;
+			}
 		}
 #endif
 		/*
@@ -191,7 +195,7 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
 			if (ptmp[1] == '/')
 				c->state = STATE_COMMENT;
 #ifdef FEAT_ICEBREAK
-			else if (ptmp[1] == '*')
+			else if (cfg->icebreak && ptmp[1] == '*')
 				c->state = STATE_IBCOMMENT;
 #endif
 			break;
