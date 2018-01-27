@@ -1,0 +1,60 @@
+.TH "RPGLEFMT" "1" "2018 January"
+.SH NAME
+rpglefmt \- Format Free Form ILE RPG programs
+.SH SYNOPSIS
+.B rpglefmt
+[\fI\,OPTION\/\fR]... [\fI\,FILE\/\fR]...
+.SH DESCRIPTION
+.PP
+Format Free Form ILE RPG programs.
+.TP
+\fB\-d\fR
+align declaration specifications that are grouped together
+.TP
+\fB\-i\fR \fIindent\fR
+the initial indentation in spaces.  If omitted seven spaces will be used unless
+the first line in the input starts with \fB**FREE\fR or if \fB\-I\fR is used.
+.br
+This option overrides \fB\-u\fR
+.TP
+\fB\-I\fR
+support IceBreak extensions, see ICEBREAK below
+.TP
+\fB\-p\fR
+try to be clever when indenting multi line parenthesis, each time \fB\-p\fR is
+used a different approach will be tried
+.TP
+\fB\-s\fR \fIwidth\fR
+the size in spaces for a indent
+.TP
+\fB\-u\fR
+use the indentaion from the first input line, useful when used on part of a
+file, eg. as the \fBequalpgm\fR in vim
+.br
+This option overrides \fB\-i\fR
+.TP
+\fB\-h\fR
+show help and exit
+.TP
+\fB\-v\fR
+display version information
+.SH ICEBREAK
+.PP
+When \fBrpglefmt\fR is compiled with \fBFEAT_ICEBREAK\fR, then the command line
+option \fB-I\fR can be used which enabled specific handling of IceBreak
+extensions.
+.PP
+Supported extensions are:
+.TP
+\[bu]
+C-style multi line comments
+.TP
+\[bu]
+IceBreak expression strings
+.SH AUTHOR
+Written by Andreas Louv <andreas@louv.dk>
+.SH "REPORTING BUGS"
+Use the GitHub bug tracker <https://github.com/andlrc/rpglefmt/issues/>
+.SH "SEE ALSO"
+.BR rpglectags (1),
+.BR rpgledoc (1)

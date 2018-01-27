@@ -1,0 +1,56 @@
+RPGLEFMT(1)                 General Commands Manual                RPGLEFMT(1)
+
+NAME
+       rpglefmt - Format Free Form ILE RPG programs
+
+SYNOPSIS
+       rpglefmt [OPTION]... [FILE]...
+
+DESCRIPTION
+       Format Free Form ILE RPG programs.
+
+       -d     align declaration specifications that are grouped together
+
+       -i indent
+              the initial indentation in spaces.  If omitted seven spaces will
+              be used unless the first line in the input starts with **FREE or
+              if -I is used.
+              This option overrides -u
+
+       -I     support IceBreak extensions, see ICEBREAK below
+
+       -p     try  to  be  clever  when indenting multi line parenthesis, each
+              time -p is used a different approach will be tried
+
+       -s width
+              the size in spaces for a indent
+
+       -u     use the indentaion from the first input line, useful  when  used
+              on part of a file, eg. as the equalpgm in vim
+              This option overrides -i
+
+       -h     show help and exit
+
+       -v     display version information
+
+ICEBREAK
+       When  rpglefmt  is  compiled  with FEAT_ICEBREAK, then the command line
+       option -I can be used  which  enabled  specific  handling  of  IceBreak
+       extensions.
+
+       Supported extensions are:
+
+       o      C-style multi line comments
+
+       o      IceBreak expression strings
+
+AUTHOR
+       Written by Andreas Louv <andreas@louv.dk>
+
+REPORTING BUGS
+       Use the GitHub bug tracker <https://github.com/andlrc/rpglefmt/issues/>
+
+SEE ALSO
+       rpglectags(1), rpgledoc(1)
+
+                                 2018 January                      RPGLEFMT(1)
