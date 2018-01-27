@@ -38,7 +38,7 @@ int dclpush(struct dclstore *dcl, struct fmtline *c)
 	item->dcl = pline;
 	item->ident = item->rest = 0;
 
-	/* find end and length of dcl-XX */;
+	/* find end and length of dcl-XX */
 	while (*pline != ';' && !isspace(*pline)) {
 		pline++;
 		item->dcllen++;
@@ -88,11 +88,15 @@ int dclflush(FILE *outfp, struct dclstore *dcl)
 	for (i = 0; i < dcl->len; i++) {
 		item = &(dcl->store[i]);
 		if (item->rest)
-			fprintf(outfp, "%*s%-*s %-*s %s", item->indent, "", dclmax, item->dcl, identmax, item->ident, item->rest);
+			fprintf(outfp, "%*s%-*s %-*s %s", item->indent, "",
+				dclmax, item->dcl, identmax, item->ident,
+				item->rest);
 		else if (item->ident)
-			fprintf(outfp, "%*s%-*s %s", item->indent, "", dclmax, item->dcl, item->ident);
+			fprintf(outfp, "%*s%-*s %s", item->indent, "",
+				dclmax, item->dcl, item->ident);
 		else if (item->dcl)
-			fprintf(outfp, "%*s%-*s", item->indent, "", dclmax, item->dcl);
+			fprintf(outfp, "%*s%-*s", item->indent, "", dclmax,
+				item->dcl);
 		else
 			fprintf(outfp, "\n");
 		free(item->dcl);

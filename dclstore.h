@@ -2,7 +2,7 @@
 #define H_DCLSTORE 1
 struct dclitem {
 	int indent;
-	char *dcl;	/* this should be freeded */
+	char *dcl;		/* this should be freeded */
 	int dcllen;
 	char *ident;
 	int identlen;

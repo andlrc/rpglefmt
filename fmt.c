@@ -86,7 +86,7 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
 		/*
 		 * de indent after the indent created by the '*' in continues comments
 		 */
-		if (startwith(p->line, "*") &&  contains(p->line, "*/")) {
+		if (startwith(p->line, "*") && contains(p->line, "*/")) {
 			indent = p->indent - 1;
 			goto finish;
 		}
@@ -329,7 +329,8 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 				if (dcl.len) {
 					dclflush(outfp, &dcl);
 				}
-				fprintf(outfp, "%*s%s", indent, "", c.line);
+				fprintf(outfp, "%*s%s", indent, "",
+					c.line);
 			}
 		} else {
 			fprintf(outfp, "%*s%s", indent, "", c.line);
