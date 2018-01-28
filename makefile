@@ -10,9 +10,10 @@ dclstore.o:	dclstore.h dclstore.c
 
 rpglefmt: rpglefmt.o fmt.o dclstore.o
 
-README:	man.1
-	LC_ALL=C MANWIDTH=80 man -l man.1 > README
+README:	rpglefmt.1
+	LC_ALL=C MANWIDTH=80 man -l $< > $@
 
 clean:
 	-rm rpglefmt.o fmt.o dclstore.o
 	-rm rpglefmt
+.PHONY:	clean
