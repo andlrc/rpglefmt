@@ -18,6 +18,10 @@
 	 strncasecmp(s, q, sizeof(q) - 1) == 0 &&	\
 	 !isalnum(s[sizeof(q) - 1]))
 
+/* Same as startwith, but no word boundary check */
+#define peek(s, q)					\
+	(s && strncasecmp(s, q, sizeof(q) - 1) == 0)
+
 #define contains(s, q)					\
 	_contains(s, q, sizeof(q) - 1)
 static int _contains(char *s, char *q, int qlen)
@@ -191,58 +195,47 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
 	 * Count parenthesis and calculate indentation based on it
 	 */
 	for (ptmp = c->line; *ptmp; ptmp++) {
-		switch (*ptmp) {
-		case '/':
-			if (ptmp[1] == '/')
+		switch ((int) c->state) {
+		case STATE_NORM:
+			if (peek(ptmp, "//")) {
+				ptmp++;
 				c->state = STATE_COMMENT;
 #ifdef FEAT_ICEBREAK
-			else if (cfg->icebreak && ptmp[1] == '*')
+			} else if (cfg->icebreak && peek(ptmp, "/*")) {
+				ptmp++;
 				c->state = STATE_IBCOMMENT;
+			} else if (cfg->icebreak && *ptmp == '`') {
+				c->state = STATE_IBSTR;
 #endif
-			break;
-		case '(':
-			if (c->state == STATE_NORM)
+			} else if (*ptmp == '\'') {
+				c->state = STATE_STR;
+			} else if (*ptmp == '(') {
 				c->parenpos[c->parencnt++] = (ptmp - c->line);
-			break;
-		case ')':
-			if (c->state == STATE_NORM) {
+			} else if (*ptmp == ')') {
 				c->parencnt--;
 				c->argvalid = 0;
+			} else if (*ptmp == ':') {
+				c->argvalid = c->parencnt > 0;
 			}
 			break;
-		case '\'':
-			if (c->state == STATE_NORM) {
-				c->state = STATE_STR;
-			} else if (c->state == STATE_STR) {
-				if (ptmp[1] == '\'')
+#ifdef FEAT_ICEBREAK
+		case STATE_IBSTR:
+			if (*ptmp == '`') {
+				c->state = STATE_NORM;
+			}
+			break;
+		case STATE_IBCOMMENT:
+			if (*ptmp == '*' && ptmp[1] == '/')
+				c->state = STATE_NORM;
+			break;
+#endif
+		case STATE_STR:
+			if (*ptmp == '\'') {
+				if (ptmp[1] == '\'')	/* escaped quote */
 					ptmp++;
 				else
 					c->state = STATE_NORM;
 			}
-			break;
-#ifdef FEAT_ICEBREAK
-		case '`':
-			if (cfg->icebreak) {
-				if (c->state == STATE_NORM) {
-					c->state = STATE_IBSTR;
-				} else if (c->state == STATE_IBSTR) {
-					if (ptmp[1] == '`')
-						ptmp++;
-					else
-						c->state = STATE_NORM;
-				}
-			}
-			break;
-		case '*':
-			if (cfg->icebreak) {
-				if (c->state == STATE_IBCOMMENT && ptmp[1] == '/')
-					c->state = STATE_NORM;
-			}
-			break;
-#endif
-		case ':':
-			if (c->state == STATE_NORM)
-				c->argvalid = c->parencnt > 0;
 			break;
 		}
 	}
