@@ -61,7 +61,7 @@ run_test "-rI"		18-keep-sql-indent-icebreak.rpgle
 run_test "-r"		19-keep-sql-indent-icebreak-no-I-flag.rpgle
 run_test "-s4 -p"	20-custom-shiftwidth.rpgle
 run_test "-u"		21-preserve-initial-indent.rpgle
-run_test "-Idrupp"	22-ands-equalpgm.rpgle
+run_test "-Idrupp"	22-ands-equalprg.rpgle
 run_test "-I"		23-icebreak-comments.rpgle
 run_test "-I"		24-icebreak-comments.rpgle
 run_test "-I"		25-icebreak-comment-with-link.rpgle

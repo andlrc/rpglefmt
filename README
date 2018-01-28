@@ -30,7 +30,7 @@ DESCRIPTION
               the size in spaces for a indent
 
        -u     use the indentaion from the first input line, useful  when  used
-              on part of a file, eg. as the equalpgm in vim
+              on part of a file, eg. as the equalprg in vim
               This option overrides -i
 
        -h     show help and exit
