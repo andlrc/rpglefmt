@@ -1,0 +1,9 @@
+Compile with
+
+    make CFLAGS=-O2
+
+and to include IceBreak support
+
+    make CFLAGS="-O2 -DFEAT_ICEBREAK"
+
+copy "rpglefmt" and "rpglefmt.1" to appropriate locations
