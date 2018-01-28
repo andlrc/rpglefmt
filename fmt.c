@@ -38,7 +38,9 @@ static int _contains(char *s, char *q, int qlen)
 static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
 {
 	char *ptmp;
-	int indent;
+	int indent, hint;
+
+	hint = 0;
 
 	/*
 	 * there is no lines to determinate indent, so use what is set in
@@ -90,8 +92,7 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
 			 */
 			if (startwith(p->line, "*") &&
 			    contains(p->line, "*/")) {
-				indent = p->indent - 1;
-				goto finish;
+				hint = -1;
 			}
 		}
 #endif
@@ -254,7 +255,7 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
 		memcpy(c->parenpos, p->parenpos, sizeof(int) * FMTMAXPAREN);
 	}
 
-	return indent;
+	return indent + hint;
 }
 
 int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
