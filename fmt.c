@@ -113,6 +113,16 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
 		}
 
 		/*
+		 * A "endmon" followed directly after a "on-error" should keep
+		 * the same indentation as "on-error"
+		 */
+		if (startwith(c->line, "endmon") &&
+		    startwith(p->line, "on-error")) {
+			indent = p->indent;
+			goto finish;
+		}
+
+		/*
 		 * "dcl-pi", "dcl-pr", and "dcl-ds" with no parameters should not
 		 * indent the "end-xx"
 		 */

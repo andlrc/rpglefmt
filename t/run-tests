@@ -65,6 +65,7 @@ run_test "-Idrupp"	22-ands-equalpgm.rpgle
 run_test "-I"		23-icebreak-comments.rpgle
 run_test "-I"		24-icebreak-comments.rpgle
 run_test "-I"		25-icebreak-comment-with-link.rpgle
+run_test ""		26-monitor.rpgle
 
 if [ "$failcnt" -gt 0 ]
 then
