@@ -11,6 +11,7 @@
 char *get_program_name(char *s)
 {
 	char *p;
+
 	if ((p = strrchr(s, '/')))
 		return strdup(p + 1);
 	else

@@ -23,5 +23,5 @@ struct fmtline {
 	int argvalid;
 };
 
-int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp);
+int fmt(const struct rpglecfg *cfg, FILE *outfp, FILE *infp);
 #endif

@@ -39,10 +39,9 @@ static int _contains(char *s, char *q, int qlen)
 	return 0;
 }
 
-static int getindent(struct rpglecfg *cfg, struct fmtline *c,
-		     struct fmtline *p)
+static int getindent(const struct rpglecfg *cfg, const struct fmtline *c,
+		     const struct fmtline *p)
 {
-	char *ptmp;
 	int indent, hint;
 
 	hint = 0;
@@ -103,8 +102,8 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c,
 #endif
 
 		/*
-		 * a "when" which follows a "select" should be indented: All other
-		 * "when" should be de indented
+		 * a "when" which follows a "select" should be indented: All
+		 * other "when" should be de indented
 		 */
 		if (startwith(c->line, "when")) {
 			if (startwith(p->line, "select"))
@@ -125,21 +124,25 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c,
 		}
 
 		/*
-		 * "dcl-pi", "dcl-pr", and "dcl-ds" with no parameters should not
-		 * indent the "end-xx"
+		 * "dcl-pi", "dcl-pr", and "dcl-ds" with no parameters should
+		 * not indent the "end-xx"
 		 */
-		if ((startwith(p->line, "dcl-pi") && startwith(c->line, "end-pi")) ||
-		    (startwith(p->line, "dcl-pr") && startwith(c->line, "end-pr")) ||
-		    (startwith(p->line, "dcl-ds") && startwith(c->line, "end-ds"))) {
+		if ((startwith(p->line, "dcl-pi") &&
+		     startwith(c->line, "end-pi")) ||
+		    (startwith(p->line, "dcl-pr") &&
+		     startwith(c->line, "end-pr")) ||
+		    (startwith(p->line, "dcl-ds") &&
+		     startwith(c->line, "end-ds"))) {
 			indent = p->indent;
 			goto finish;
 		}
 
-		/* 
-		 * "dcl-ds" with "likeds" on the same line doesn't take a definition and
-		 * should not do any indent
+		/*
+		 * "dcl-ds" with "likeds" on the same line doesn't take a
+		 * definition and should not do any indent
 		 */
-		if (startwith(p->line, "dcl-ds") && contains(p->line, "likeds")) {
+		if (startwith(p->line, "dcl-ds") &&
+		    contains(p->line, "likeds")) {
 			indent = p->indent;
 			goto finish;
 		}
@@ -201,70 +204,11 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c,
 	 */
 	indent = p->indent;
 
-      finish:
-
-	/*
-	 * detect if the line ends in a multi line string or comment.
-	 * count open/close parenthesis to use for "cfg->paren"
-	 */
-	for (ptmp = c->line; *ptmp; ptmp++) {
-		switch ((int) c->state) {
-		case STATE_NORM:
-			if (peek(ptmp, "//")) {
-				ptmp++;
-				c->state = STATE_COMMENT;
-#ifdef FEAT_ICEBREAK
-			} else if (cfg->icebreak && peek(ptmp, "/*")) {
-				ptmp++;
-				c->state = STATE_IBCOMMENT;
-			} else if (cfg->icebreak && *ptmp == '`') {
-				c->state = STATE_IBSTR;
-#endif
-			} else if (*ptmp == '\'') {
-				c->state = STATE_STR;
-			} else if (*ptmp == '(') {
-				c->parenpos[c->parencnt++] = (ptmp - c->line);
-			} else if (*ptmp == ')') {
-				c->parencnt--;
-				c->argvalid = 0;
-			} else if (*ptmp == ':') {
-				c->argvalid = c->parencnt > 0;
-			}
-			break;
-#ifdef FEAT_ICEBREAK
-		case STATE_IBSTR:
-			if (*ptmp == '`') {
-				c->state = STATE_NORM;
-			}
-			break;
-		case STATE_IBCOMMENT:
-			if (*ptmp == '*' && ptmp[1] == '/')
-				c->state = STATE_NORM;
-			break;
-#endif
-		case STATE_STR:
-			if (*ptmp == '\'') {
-				if (ptmp[1] == '\'')	/* escaped quote */
-					ptmp++;
-				else
-					c->state = STATE_NORM;
-			}
-			break;
-		}
-	}
-
-	if (c->state == STATE_COMMENT)
-		c->state = STATE_NORM;
-
-	if (c->parencnt < 0) {
-		c->parencnt = p->parencnt + c->parencnt;
-		memcpy(c->parenpos, p->parenpos, sizeof(int) * FMTMAXPAREN);
-	}
-
+finish:
 	return indent + hint;
 }
 
-int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
+int fmt(const struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 {
 	char *linebuf, *pline;
 	size_t linesiz;
@@ -272,6 +216,7 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 	struct dclstore dcl;
 	struct fmtline c;	/* current line */
 	struct fmtline p;	/* Previous non blank line */
+	char *ptmp;
 
 	linebuf = 0;
 	linesiz = 0;
@@ -285,7 +230,7 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 	for (lineno = 0; getline(&linebuf, &linesiz, infp) != -1; lineno++) {
 		for (pline = linebuf, c.spaces = 0;
 		     isspace(*pline); pline++, c.spaces++)
-			/* remove leading indentation */;
+			;	/* remove leading indentation */
 
 		if (*pline == '\0') {	/* empty lines */
 			/* include empty lines in groupings */
@@ -304,6 +249,68 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 		if (!(c.line = strdup(pline)))
 			return -1;
 		c.indent = getindent(cfg, &c, &p);
+
+		/*
+		 * detect if the line ends in a multi line string or comment.
+		 * count open/close parenthesis to use for "cfg->paren"
+		 */
+		for (ptmp = c.line; *ptmp; ptmp++) {
+			switch ((int) c.state) {
+			case STATE_NORM:
+				if (peek(ptmp, "//")) {
+					ptmp++;
+					c.state = STATE_COMMENT;
+#ifdef FEAT_ICEBREAK
+				} else if (cfg->icebreak &&
+					   peek(ptmp, "/*")) {
+					ptmp++;
+					c.state = STATE_IBCOMMENT;
+				} else if (cfg->icebreak && *ptmp == '`') {
+					c.state = STATE_IBSTR;
+#endif
+				} else if (*ptmp == '\'') {
+					c.state = STATE_STR;
+				} else if (*ptmp == '(') {
+					c.parenpos[c.parencnt++]
+					    = (ptmp - c.line);
+				} else if (*ptmp == ')') {
+					c.parencnt--;
+					c.argvalid = 0;
+				} else if (*ptmp == ':') {
+					c.argvalid = c.parencnt > 0;
+				}
+				break;
+#ifdef FEAT_ICEBREAK
+			case STATE_IBSTR:
+				if (*ptmp == '`')
+					c.state = STATE_NORM;
+				break;
+			case STATE_IBCOMMENT:
+				if (*ptmp == '*' && ptmp[1] == '/')
+					c.state = STATE_NORM;
+				break;
+#endif
+			case STATE_STR:
+				if (*ptmp == '\'') {
+					/* escaped quote */
+					if (ptmp[1] == '\'')
+						ptmp++;
+					else
+						c.state = STATE_NORM;
+				}
+				break;
+			}
+		}
+
+		if (c.state == STATE_COMMENT)
+			c.state = STATE_NORM;
+
+		if (c.parencnt < 0) {
+			c.parencnt = p.parencnt + c.parencnt;
+			memcpy(c.parenpos, p.parenpos,
+			       sizeof(int) * FMTMAXPAREN);
+		}
+
 		if (cfg->relindent && (
 #ifdef FEAT_ICEBREAK
 		    p.state == STATE_IBSTR ||

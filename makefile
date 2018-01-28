@@ -1,12 +1,12 @@
 FEATURES	= -DFEAT_ICEBREAK
 CFLAGS		= -Wall -Werror -Wextra $(FEATURES)
 
-all:	rpglefmt README test
+all:	rpglefmt README
 .PHONY:	all
 
-rpglefmt.o:	rpglefmt.h fmt.h rpglefmt.c
-fmt.o:		dclstore.h rpglefmt.h fmt.c
-dclstore.o:	dclstore.h dclstore.c
+rpglefmt.o:	rpglefmt.c rpglefmt.h fmt.h
+fmt.o:		fmt.c rpglefmt.h fmt.h dclstore.h
+dclstore.o:	dclstore.c rpglefmt.h fmt.h dclstore.h
 
 rpglefmt: rpglefmt.o fmt.o dclstore.o
 

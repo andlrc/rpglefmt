@@ -8,10 +8,6 @@
 
 int dclpush(struct dclstore *dcl, struct fmtline *c)
 {
-#define ltrim(p)		\
-	while (isspace(*p)) {	\
-		p++;		\
-	}
 	struct dclitem *item;
 	char *pline;
 
@@ -49,7 +45,8 @@ int dclpush(struct dclstore *dcl, struct fmtline *c)
 		return 0;
 	*pline++ = '\0';
 
-	ltrim(pline);
+	while (isspace(*pline))
+		pline++;
 	item->ident = pline;
 	/* find end and length of the identifier */
 	while (*pline != ';' && !isspace(*pline)) {
@@ -62,7 +59,8 @@ int dclpush(struct dclstore *dcl, struct fmtline *c)
 		return 0;
 	*pline++ = '\0';
 
-	ltrim(pline);
+	while (isspace(*pline))
+		pline++;
 	item->rest = pline;
 
 	return 0;
