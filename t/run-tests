@@ -1,0 +1,73 @@
+#!/bin/sh
+
+exit_status=0
+
+testcnt=0
+failcnt=0
+
+if ../rpglefmt -V | grep -q -- +icebreak
+then
+	feat_icebreak=1
+fi
+
+run_test()
+{
+	flags=$1; shift;
+	file=$1; shift
+
+	# don't quote $flags, we need them to word split
+	set -- $flags "i/$file"
+
+	cmdline=$(printf "rpglefmt %s" "$*")
+
+	# Skip IceBreak tests unless we compiled with FEAT_ICEBREAK
+	if echo "$flags" | grep -q -- I && [ -z "$feat_icebreak" ]
+	then
+		printf "SKIP %s\n" "$cmdline"
+		return
+	fi
+
+	if output=$(../rpglefmt "$@" |
+		diff -u -L "expected" -L "generated" "o/$file" - 2>&1)
+	then
+		printf "OK %s\n" "$cmdline"
+	else
+		exit_status=1
+		failcnt=$((failcnt + 1))
+		printf "\nFAIL %s\n" "$cmdline"
+		printf "%s\n\n" "$output"
+	fi
+	testcnt=$((testcnt + 1))
+}
+
+run_test ""		01-if-else.rpgle
+run_test ""		02-free.rpgle
+run_test ""		03-select-when.rpgle
+run_test ""		04-mixed-indent.rpgle
+run_test "-d"		05-dcl-s.rpgle
+run_test "-d"		06-dcl-c.rpgle
+run_test "-p"		07-indent-paren.rpgle
+run_test "-d"		08-dcl-s-empty-lines.rpgle
+run_test "-d"		09-dcl-mixed.rpgle
+run_test "-i 0"		10-custom-indent-0.rpgle
+run_test "-i 5"		11-custom-indent-5.rpgle
+run_test "-i 10"	12-custom-indent-10.rpgle
+run_test "-I"		13-icebreak-comments.rpgle
+run_test "-I"		14-icebreak-comments-with-code.rpgle
+run_test "-pp"		15-indent-paren-2.rpgle
+run_test "-I"		16-icebreak-comments-endif.rpgle
+run_test "-r"		17-keep-sql-indent.rpgle
+run_test "-rI"		18-keep-sql-indent-icebreak.rpgle
+run_test "-r"		19-keep-sql-indent-icebreak-no-I-flag.rpgle
+run_test "-s4 -p"	20-custom-shiftwidth.rpgle
+run_test "-u"		21-preserve-initial-indent.rpgle
+run_test "-Idrupp"	22-ands-equalpgm.rpgle
+
+if [ "$failcnt" -gt 0 ]
+then
+	printf "Failed %d/%d tests\n" "$failcnt" "$testcnt"
+else
+	printf "All test succeeded\n"
+fi
+
+exit "$exit_status"
