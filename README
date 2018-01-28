@@ -11,6 +11,8 @@ DESCRIPTION
 
        -d     align declaration specifications that are grouped together
 
+       -dd    like -d but consider empty lines as part of a declaration group
+
        -i indent
               the initial indentation in spaces.  If omitted seven spaces will
               be used unless the first line in the input starts with **FREE or
@@ -19,17 +21,20 @@ DESCRIPTION
 
        -I     support IceBreak extensions, see ICEBREAK below
 
-       -p     try  to  be  clever  when indenting multi line parenthesis, each
-              time -p is used a different approach will be tried
+       -p     count  parenthesis  and indent with one shiftwidth for each open
+              parenthesis
 
-       -r     preserve the relative indentation between  multi  line  strings.
+       -pp    like -p but if the line is broken after the first argument to  a
+              procedure, then the next line is aligned with the first argument
+
+       -r     preserve  the  relative  indentation between multi line strings.
               If the first line is indented four and the second six, then sec-
               ond will end up being indented two spaces more
 
        -s width
               the size in spaces for a indent
 
-       -u     use the indentaion from the first input line, useful  when  used
+       -u     use  the  indentaion from the first input line, useful when used
               on part of a file, eg. as the equalprg in vim
               This option overrides -i
 
@@ -38,8 +43,8 @@ DESCRIPTION
        -v     display version information
 
 ICEBREAK
-       When  rpglefmt  is  compiled  with FEAT_ICEBREAK, then the command line
-       option -I can be used  which  enabled  specific  handling  of  IceBreak
+       When rpglefmt is compiled with FEAT_ICEBREAK,  then  the  command  line
+       option  -I  can  be  used  which  enabled specific handling of IceBreak
        extensions.
 
        Supported extensions are:

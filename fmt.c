@@ -39,7 +39,8 @@ static int _contains(char *s, char *q, int qlen)
 	return 0;
 }
 
-static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
+static int getindent(struct rpglecfg *cfg, struct fmtline *c,
+		     struct fmtline *p)
 {
 	char *ptmp;
 	int indent, hint;
@@ -100,6 +101,7 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
 			}
 		}
 #endif
+
 		/*
 		 * a "when" which follows a "select" should be indented: All other
 		 * "when" should be de indented
@@ -202,7 +204,8 @@ static int getindent(struct rpglecfg *cfg, struct fmtline *c, struct fmtline *p)
       finish:
 
 	/*
-	 * Count parenthesis and calculate indentation based on it
+	 * detect if the line ends in a multi line string or comment.
+	 * count open/close parenthesis to use for "cfg->paren"
 	 */
 	for (ptmp = c->line; *ptmp; ptmp++) {
 		switch ((int) c->state) {
@@ -284,11 +287,14 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 		     isspace(*pline); pline++, c.spaces++)
 			/* remove leading indentation */;
 
-		if (*pline == '\0') {	/* ignore empty lines */
-			if (cfg->aligndcl) {
+		if (*pline == '\0') {	/* empty lines */
+			/* include empty lines in groupings */
+			if (cfg->aligndcl >= 2) {
 				if (dclpush(&dcl, 0) == -1)
 					return -1;
 			} else {
+				if (cfg->aligndcl)
+					dclflush(outfp, &dcl);
 				fprintf(outfp, "%s", linebuf);
 			}
 			continue;
@@ -305,8 +311,14 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 		    p.state == STATE_STR)) {
 			c.xindent += (c.spaces - p.spaces);
 		} else if (cfg->paren && p.parencnt) {
+			/*
+			 * align procedures arguments like this:
+			 * procedure('arg1' : 'arg2' :
+			 *           'arg3');
+			 */
 			if (p.argvalid && cfg->paren >= 2)
 				c.xindent = p.parenpos[p.parencnt - 1] + 1;
+			/* indent procedure arguments with one shifwidth */
 			else
 				c.xindent = p.parencnt * cfg->shiftwidth;
 
@@ -334,9 +346,7 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 				if (dclpush(&dcl, &c) == -1)
 					return -1;
 			} else {
-				if (dcl.len) {
-					dclflush(outfp, &dcl);
-				}
+				dclflush(outfp, &dcl);
 				fprintf(outfp, "%*s%s", indent, "",
 					c.line);
 			}
@@ -348,8 +358,7 @@ int fmt(struct rpglecfg *cfg, FILE *outfp, FILE *infp)
 		memcpy(&p, &c, sizeof(struct fmtline));
 	}
 
-	if (dcl.len)
-		dclflush(outfp, &dcl);
+	dclflush(outfp, &dcl);
 
 	free(p.line);
 	free(linebuf);

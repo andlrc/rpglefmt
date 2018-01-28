@@ -66,6 +66,7 @@ run_test "-I"		23-icebreak-comments.rpgle
 run_test "-I"		24-icebreak-comments.rpgle
 run_test "-I"		25-icebreak-comment-with-link.rpgle
 run_test ""		26-monitor.rpgle
+run_test "-dd"		27-dcl-s-empty-lines.rpgle
 
 if [ "$failcnt" -gt 0 ]
 then
